@@ -1,5 +1,4 @@
-# movfuscator - 
-## ASC Project
+# movfuscator - ASC
 
 ## Instructions needed to movfuscate:  
 *mov

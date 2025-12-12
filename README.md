@@ -1,20 +1,20 @@
 # movfuscator - ASC
 
 ## Instructions needed to movfuscate:  
-*mov
-add
-sub
-mul
-div
-inc
-dec
-shl
-shr
-or
-xor
-cmp
+*mov  
+add  
+sub  
+mul  
+div  
+inc  
+dec  
+shl  
+shr  
+or  
+xor  
+cmp  
 
-extra:
-jmp (je, jz, jge, jle)
-loop
+extra:  
+jmp (je, jz, jge, jle)  
+loop  
 

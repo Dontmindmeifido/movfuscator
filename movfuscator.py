@@ -1,42 +1,102 @@
+lookup_add = ""
+for op1 in range(256):
+    for op2 in range(256):
+        lookup_add += str(op1 + op2) + " "
+
 def add(op1, op2):
-    fi = ""
-    s = "   "
-    for i in [0, 1, 2, 3]:
-        fi += f"{s} mov $lookup_add, %ebp \n"
-        fi += f"{s} movb {i}({op1}), %eax \n" #  Must save the values of registers
-        fi += f"{s} movb {i}({op2}), %ebx \n" #  Must save the values of registers
-        fi += f"{s} movb $ebp(%eax, %ebx, 255), {i}($temp_reg) \n"
+    ret = ""
+    ret += "movl $lookup_add, %ebx\n"
+    ret += f"movl ${op1}, %esi\n"
+    ret += f"movl ${op2}, %edi\n"
+    
+    for i in ["0", "1", "2", "3"]:
+        ret += "movl $0, %eax\n"
+        ret += f"movb {i}(%esi), %ah\n"
+        ret += f"movb {i}(%edi), %al\n"
+        ret += "movb (%ebx, %eax), %dl\n"
+        ret += f"movb %dl, {i}(%edi)\n"
 
-    fi += f"{s} mov $temp_reg, {op2} \n"
+    return ret
 
-    return fi
+def inc(op):
+    ret = ""
+    
+    ret += add("$1", op)
 
-lookup_add = "1 2 3" # Placeholder for now
-#for op2 in range(256):
-#    for op1 in range(256):
-#        # At memory op1 + 255 * op2
-#        lookup_add = lookup_add + f"{op1+op2} "
+    return ret
+
+def mul(op1, op2):
+    ret += ""
+    # Save op2 original somewhere for multiplication
+    for i in range(len(256)):
+        ret += f"mov $op2, ($1001)\n"
+        ret += f"mov $0, ($1000)\n"
 
 
+        ret += f"mov ${i}, %eax\n"
+        ret += f"mov {op1}, %ebx\n"
+        ret += f"mov $0, (%eax)\n"
+        ret += f"mov $1, (%ebx)\n"
+        ret += f"mov (%eax), %ecx\n"
+        ret += f"mov %1000($1, %ecx), %ecx\n"
+
+        ret += f"mov %ecx, {op2}\n"
+        ret += add(op2, op2)
+        ret += f"mov ($1001), {op2}\n"
+
+def shl(op1, op2):
+    ret += ""
+    for i in range(len(256)):
+        ret += f"mov $op2, ($1001)\n"
+        ret += f"mov $0, ($1000)\n"
 
 
-out = open("out.as", "w")
+        ret += f"mov ${i}, %eax\n"
+        ret += f"mov {op1}, %ebx\n"
+        ret += f"mov $0, (%eax)\n"
+        ret += f"mov $1, (%ebx)\n"
+        ret += f"mov (%eax), %ecx\n"
+        ret += f"mov %1000($1, %ecx), %ecx\n"
 
-with open("file.as", "r") as assembly:
+        ret += f"mov %ecx, {op2}\n"
+        ret += add(op2, op2)
+        ret += f"mov ($1001), {op2}\n"
+
+
+out = open("out.asm", "w")
+
+with open("file.asm", "r") as assembly:
     for line in assembly.readlines():
         # Add lookups to .data
         if (line.split(" ")[0][0:5] == ".data"):
             out.write(line)
             out.write(f"    lookup_add: .single 65536 {lookup_add} \n")
-            out.write("    temp_reg: .space 4 \n")
+            out.write("    temp: .space 4 \n")
         elif (line.split(" ")[0][0:5] == ".main"):
             out.write(line)
         else:
             if "add" in line:
                 line = line.replace(",", "")
-                op1 = line.split(" ")[1]
-                op2 = line.split(" ")[2]
+                args= line.split(" ")
+                op1 = args[1]
+                op2 = args[2]
                 out.write(add(op1, op2))
+            elif "mul" in line:
+                line = line.replace(",", "")
+                args= line.split(" ")
+                op1 = args[1]
+                op2 = args[2]
+                out.write(mul(op1, op2))
+            elif "shl" in line:
+                line = line.replace(",", "")
+                args= line.split(" ")
+                op1 = args[1]
+                op2 = args[2]
+                out.write(mul(op1, op2))
+            elif "inc" in line:
+                args= line.split(" ")
+                op = args[1]
+                out.write(inc(op))
             else:
                 out.write(line)
         

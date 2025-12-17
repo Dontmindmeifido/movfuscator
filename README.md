@@ -3,17 +3,17 @@
 Instructions needed to movfuscate:  
 
 - *mov  
-- add  1
+- add  DONE
 - sub  
-- mul  1
+- mul  DONE
 - div  
-- inc  1
+- inc  DONE
 - dec  
-- shl  1
+- shl  DONE
 - shr  
-- or   1
-- xor  1
-- cmp  1
+- or   DONE
+- xor  DONE
+- cmp  (Easy)
 
 extra:  
 - jmp (je, jz, jge, jle)  

@@ -1,21 +1,3 @@
-#--------------- HELP (OUTDATED) ---------------#
-# top1 - temporary operand 1
-# top2 - temporary operand 2
-# tax - temporary register eax
-# tbx - temporary register ebx
-# .
-# .
-# .
-# tdi - temporary register edi
-# lookup_add - lookup table for add
-# lookup_andd - lookup table for and (and is unavailable)
-# lookup_orr - lookup table for or (or is unavailable)
-# lookup_nott - lookup table for not (not is unavailable)
-# lookup_xor - lookup table for xor
-#--------------- HELP (OUTDATED) ---------------#
-
-
-
 lookup_add = ""
 for op1 in range(256):
     for op2 in range(256):
@@ -108,8 +90,8 @@ def trlupdprogexec(op1, op2):
     '''
     Trailing update program execution
     
-    :param op1: Variable
-    :param op2: Constant
+    :param op1: variable
+    :param op2: constant
     '''
     ret = ""
 
@@ -183,6 +165,58 @@ def mul(op1, op2):
         ret += "movl %edx, (%esi)" 
 
         ret += "movl topm1, %edx"
+    
+    ret += restore_registers()
+
+    # Final result will be in eax
+    ret += "movl topm1, %eax"
+
+    return ret
+
+def shl(op1, op2):
+    '''
+    Shift left (AlSO SAVES IN EAX)
+
+    :param op1: shift left amount
+    :param op2: operand to shift
+    '''
+    ret = ""
+
+    ret += save_registers()
+
+    # Initialize branch
+    ret += "movl $branch, %edi"
+
+    ret += "movl $0, %eax"
+    ret += "movl $topm1, %ebx" # we will save the real branch at the adress of topm1 (Be careful, progexec initially starts at 0 so we want that)
+    ret += "movl %ebx, (%edi, %eax, 4)"
+
+    ret += "movl $1, %eax"
+    ret += "movl $topm2, %ebx" # we will save the fake branch at the adress of topm2 (Be careful, progexec initially starts at 0 so we want that)
+    ret += "movl %ebx, (%edi, %eax, 4)"
+
+    # Initialize variables
+    ret += "movl $0, %ecx"
+    ret += f"movb {op1}, %cl"
+
+    ret += f"movl {op2}, %edx"
+    ret += "movl %edx, topm1"
+
+
+    for i in range(256):
+        # Multiply by 2, save in edx
+        ret += add("%edx", "%edx")
+
+        # Update progexec (%ecx is op1)
+        ret += trlupdprogexec("%ecx", f"{i}")
+
+        # Save the result to branch (if we wrote to it good, if not then also good)
+        ret += "movl progexec, %eax"
+        ret += "movl (%edi, %eax, 4), %esi"
+        ret += "movl %edx, (%esi)" 
+
+        ret += "movl topm1, %edx" # This ensures edx is always updated with the necessary value after branching,
+                                  # Even though it got corrupted during the add (writing to itself a value not needed to execute by progexec)
     
     ret += restore_registers()
 
@@ -355,72 +389,72 @@ with open("in.s", "r") as assembly:
         if not line:
             continue
 
-        # Add lookups to .data
         if (line.split()[0] == ".data"):
             out.write(line + "\n")
-            out.write(f"    lookup_add: .byte {lookup_add} \n")
-            out.write(f"    lookup_andd: .byte {lookup_andd} \n")
-            out.write(f"    lookup_orr: .byte {lookup_orr} \n")
-            out.write(f"    lookup_nott: .byte {lookup_nott} \n")
-            out.write(f"    lookup_xor: .byte {lookup_xor} \n")
+            out.write(f"    lookup_add: .byte {lookup_add} \n") # lookup table for add
+            out.write(f"    lookup_andd: .byte {lookup_andd} \n") # lookup table for and
+            out.write(f"    lookup_orr: .byte {lookup_orr} \n") # lookup table for or
+            out.write(f"    lookup_nott: .byte {lookup_nott} \n") # lookup table for not
+            out.write(f"    lookup_xor: .byte {lookup_xor} \n") # lookup table for xor
 
-            out.write("    tax: .space 4\n")
-            out.write("    tbx: .space 4\n")
-            out.write("    tcx: .space 4\n")
-            out.write("    tdx: .space 4\n")
-            out.write("    tsi: .space 4\n")
-            out.write("    tdi: .space 4\n")
+            out.write("    tax: .space 4\n") # temporary space for register eax
+            out.write("    tbx: .space 4\n") # temporary space for register ebx
+            out.write("    tcx: .space 4\n") # temporary space for register ecx
+            out.write("    tdx: .space 4\n") # temporary space for register edx
+            out.write("    tsi: .space 4\n") # temporary space for register esi
+            out.write("    tdi: .space 4\n") # temporary space for register edi
             
-            out.write("    top1: .space 4 \n")
-            out.write("    top2: .space 4 \n")
-            out.write("    topm1: .space 4 \n")
-            out.write("    topm2: .space 4 \n")
+            out.write("    top1: .space 4 \n") # temporary space for add func operand 1
+            out.write("    top2: .space 4 \n") # temporary space for add func operand 2
+            out.write("    topm1: .space 4 \n") # temporary space for mul func operand 1
+            out.write("    topm2: .space 4 \n") # temporary space for mul func operand 2
 
             out.write("    progexec: .space 4 \n") # dictates program flow
             out.write("    branch: .space 8 \n") # 4 bytes of memory at ($branch, $0, 4) and 4 at ($branch, $1, 4) [obv, arg1 and arg2 in registers]
             out.write("    eqtrash: .space 1024 \n") # trash memory to be used for equality checks between LONG and BYTE at most
         elif (line.split()[0] == ".main"):
             out.write(line + "\n")
-            # For future use to generate lookup tables ok
+            # For future use to generate lookup tables ok (maybe)
         else:
             if line.split()[0] == "inc":
                 args= line.split()
-                op = args[1]
-                out.write(inc(op))
+
+                out.write(inc(args[1]))
             elif line.split()[0] == "add":
                 line = line.replace(",", " ")
                 args= line.split()
-                op1 = args[1]
-                op2 = args[2]
-                out.write(add(op1, op2))
+
+                out.write(add(args[1], args[2]))
             elif line.split()[0] == "mul":
                 line = line.replace(",", " ")
                 args= line.split()
                 op1 = args[1]
                 op2 = args[2]
-                out.write(mul(op1, op2))
+                out.write(mul(args[1], args[2]))
+            elif line.split()[0] == "shl":
+                line = line.replace(",", " ")
+                args= line.split()
+
+                out.write(shl(args[1], args[2]))
             elif line.split()[0] == "and":
                 line = line.replace(",", " ")
                 args= line.split()
-                op1 = args[1]
-                op2 = args[2]
-                out.write(andd(op1, op2))
+
+                out.write(andd(args[1], args[2]))
             elif line.split()[0] == "or":
                 line = line.replace(",", " ")
                 args= line.split()
-                op1 = args[1]
-                op2 = args[2]
-                out.write(orr(op1, op2))
+
+                out.write(orr(args[1], args[2]))
             elif line.split()[0] == "not":
                 args= line.split()
-                op = args[1]
-                out.write(nott(op))
+
+                out.write(nott(args[1]))
             elif line.split()[0] == "xor":
                 line = line.replace(",", " ")
                 args= line.split()
-                op1 = args[1]
-                op2 = args[2]
-                out.write(xor(op1, op2))
+
+                out.write(xor(args[1], args[2]))
             else:
                 out.write(line + "\n")
         

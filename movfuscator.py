@@ -90,6 +90,8 @@ def add(op1, op2):
         ret += "movb (%ebx, %eax), %dl\n"
         ret += f"movb %dl, {i}(%edi)\n"
 
+    ret += restore_registers()
+
     if op2.startswith("%"):
         ret += f"movl top2, {op2}\n"
     elif op2.startswith("$"):
@@ -99,18 +101,12 @@ def add(op1, op2):
         ret += f"movl top2, %eax\n"
         ret += f"movl %eax, {op2}\n" 
 
-    ret += restore_registers()
-
     return ret
 
 def inc(op):
     ret = ""
-
-    ret += save_registers()
     
     ret += add("$1", op)
-
-    ret += restore_registers()
 
     return ret
 
@@ -139,6 +135,8 @@ def andd(op1, op2):
         ret += "movb (%ebx, %eax), %dl\n"
         ret += f"movb %dl, {i}(%edi)\n"
 
+    ret += restore_registers()
+
     if op2.startswith("%"):
         ret += f"movl top2, {op2}\n"
     elif op2.startswith("$"):
@@ -147,8 +145,6 @@ def andd(op1, op2):
     else:
         ret += f"movl top2, %eax\n"
         ret += f"movl %eax, {op2}\n" 
-
-    ret += restore_registers()
 
     return ret
 
@@ -177,6 +173,8 @@ def orr(op1, op2):
         ret += "movb (%ebx, %eax), %dl\n"
         ret += f"movb %dl, {i}(%edi)\n"
 
+    ret += restore_registers()
+
     if op2.startswith("%"):
         ret += f"movl top2, {op2}\n"
     elif op2.startswith("$"):
@@ -185,8 +183,6 @@ def orr(op1, op2):
     else:
         ret += f"movl top2, %eax\n"
         ret += f"movl %eax, {op2}\n" 
-
-    ret += restore_registers()
 
     return ret
 
@@ -211,6 +207,8 @@ def nott(op):
         ret += "movb (%ebx, %eax), %dl\n"
         ret += f"movb %dl, {i}(%esi)\n"
 
+    ret += restore_registers()
+
     if op.startswith("%"):
         ret += f"movl top1, {op}\n"
     elif op.startswith("$"):
@@ -219,8 +217,6 @@ def nott(op):
     else:
         ret += f"movl top1, %eax\n"
         ret += f"movl %eax, {op}\n" 
-
-    ret += restore_registers()
 
     return ret
 
@@ -249,6 +245,8 @@ def xor(op1, op2):
         ret += "movb (%ebx, %eax), %dl\n"
         ret += f"movb %dl, {i}(%edi)\n"
 
+    ret += restore_registers()
+
     if op2.startswith("%"):
         ret += f"movl top2, {op2}\n"
     elif op2.startswith("$"):
@@ -257,8 +255,6 @@ def xor(op1, op2):
     else:
         ret += f"movl top2, %eax\n"
         ret += f"movl %eax, {op2}\n" 
-
-    ret += restore_registers()
 
     return ret
 

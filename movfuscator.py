@@ -139,8 +139,6 @@ def trlupdprogexec(op1, op2):
 
     return ret
 
-#CONSTRUCTION
-
 def mul(op1, op2):
     '''
     ATTENTION: MUL SAVES RESULT IN EAX (as opposed to add which saves to destination operand)

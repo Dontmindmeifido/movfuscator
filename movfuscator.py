@@ -47,6 +47,7 @@ def restore_registers():
     ret += "movl tdi, %edi\n"
     return ret
 
+# KNOWN ISSUES: OVERFLOW
 def add(op1, op2):
     ret = ""
 
@@ -121,6 +122,7 @@ def trlupdprogexec(op1, op2):
 
     return ret
 
+# KNOWN ISSUES: OFERLOWS, IT IS ONLY ON 32 bits. LIMITATION: op1 on 1 byte.
 def mul(op1, op2):
     '''
     ATTENTION: MUL SAVES RESULT IN EAX (as opposed to add which saves to destination operand)
@@ -133,23 +135,23 @@ def mul(op1, op2):
     ret += save_registers()
 
     # Initialize branch
-    ret += "movl $branch, %edi"
+    ret += "movl $branch, %edi\n"
 
-    ret += "movl $0, %eax"
-    ret += "movl $topm1, %ebx" # we will save the real branch at the adress of topm1 (Be careful, progexec initially starts at 0 so we want that)
-    ret += "movl %ebx, (%edi, %eax, 4)"
+    ret += "movl $0, %eax\n"
+    ret += "movl $topm1, %ebx\n" # we will save the real branch at the adress of topm1 (Be careful, progexec initially starts at 0 so we want that)
+    ret += "movl %ebx, (%edi, %eax, 4)\n"
 
-    ret += "movl $1, %eax"
-    ret += "movl $topm2, %ebx" # we will save the fake branch at the adress of topm2 (Be careful, progexec initially starts at 0 so we want that)
-    ret += "movl %ebx, (%edi, %eax, 4)"
+    ret += "movl $1, %eax\n"
+    ret += "movl $topm2, %ebx\n" # we will save the fake branch at the adress of topm2 (Be careful, progexec initially starts at 0 so we want that)
+    ret += "movl %ebx, (%edi, %eax, 4)\n"
 
     # Initialize variables
-    ret += f"movl {op2}, %ebx"
-    ret += "movl $0, %ecx"
-    ret += f"movb {op1}, %cl"
+    ret += f"movl {op2}, %ebx\n"
+    ret += "movl $0, %ecx\n"
+    ret += f"movb {op1}, %cl\n"
 
-    ret += "movl $0, %edx"
-    ret += "movl %edx, topm1"
+    ret += "movl $0, %edx\n"
+    ret += "movl %edx, topm1\n"
 
 
     for i in range(256):
@@ -160,11 +162,11 @@ def mul(op1, op2):
         ret += trlupdprogexec("%ecx", f"{i}")
 
         # Save the result to branch (if we wrote to it good, if not then also good)
-        ret += "movl progexec, %eax"
-        ret += "movl (%edi, %eax, 4), %esi"
-        ret += "movl %edx, (%esi)" 
+        ret += "movl progexec, %eax\n"
+        ret += "movl (%edi, %eax, 4), %esi\n"
+        ret += "movl %edx, (%esi)\n" 
 
-        ret += "movl topm1, %edx"
+        ret += "movl topm1, %edx\n"
     
     ret += restore_registers()
 
@@ -185,22 +187,22 @@ def shl(op1, op2):
     ret += save_registers()
 
     # Initialize branch
-    ret += "movl $branch, %edi"
+    ret += "movl $branch, %edi\n"
 
-    ret += "movl $0, %eax"
-    ret += "movl $topm1, %ebx" # we will save the real branch at the adress of topm1 (Be careful, progexec initially starts at 0 so we want that)
-    ret += "movl %ebx, (%edi, %eax, 4)"
+    ret += "movl $0, %eax\n"
+    ret += "movl $topm1, %ebx\n" # we will save the real branch at the adress of topm1 (Be careful, progexec initially starts at 0 so we want that)
+    ret += "movl %ebx, (%edi, %eax, 4)\n"
 
-    ret += "movl $1, %eax"
-    ret += "movl $topm2, %ebx" # we will save the fake branch at the adress of topm2 (Be careful, progexec initially starts at 0 so we want that)
-    ret += "movl %ebx, (%edi, %eax, 4)"
+    ret += "movl $1, %eax\n"
+    ret += "movl $topm2, %ebx\n" # we will save the fake branch at the adress of topm2 (Be careful, progexec initially starts at 0 so we want that)
+    ret += "movl %ebx, (%edi, %eax, 4)\n"
 
     # Initialize variables
-    ret += "movl $0, %ecx"
-    ret += f"movb {op1}, %cl"
+    ret += "movl $0, %ecx\n"
+    ret += f"movb {op1}, %cl\n"
 
-    ret += f"movl {op2}, %edx"
-    ret += "movl %edx, topm1"
+    ret += f"movl {op2}, %edx\n"
+    ret += "movl %edx, topm1\n"
 
 
     for i in range(256):
@@ -211,17 +213,17 @@ def shl(op1, op2):
         ret += trlupdprogexec("%ecx", f"{i}")
 
         # Save the result to branch (if we wrote to it good, if not then also good)
-        ret += "movl progexec, %eax"
-        ret += "movl (%edi, %eax, 4), %esi"
-        ret += "movl %edx, (%esi)" 
+        ret += "movl progexec, %eax\n"
+        ret += "movl (%edi, %eax, 4), %esi\n"
+        ret += "movl %edx, (%esi)\n" 
 
-        ret += "movl topm1, %edx" # This ensures edx is always updated with the necessary value after branching,
+        ret += "movl topm1, %edx\n" # This ensures edx is always updated with the necessary value after branching,
                                   # Even though it got corrupted during the add (writing to itself a value not needed to execute by progexec)
     
     ret += restore_registers()
 
     # Final result will be in eax
-    ret += "movl topm1, %eax"
+    ret += "movl topm1, %eax\n"
 
     return ret
 
@@ -380,6 +382,29 @@ def xor(op1, op2):
 
     return ret
 
+def sub(op1, op2):
+    ret = ""
+
+    ret += "movl %eax, topm2\n"
+
+    ret += f"movl {op1}, %eax\n"
+    ret += "movl %eax, topm1\n"
+
+    ret += "movl topm2, %eax\n"
+
+    ret += nott("topm1")
+    ret += inc("topm1")
+
+    ret += add("topm1", f"{op2}")
+
+    return ret
+
+def dec(op):
+    ret = ""
+
+    ret += sub("$1", op)
+
+    return ret
 
 out = open("out.s", "w")
 with open("in.s", "r") as assembly:
@@ -420,11 +445,20 @@ with open("in.s", "r") as assembly:
                 args= line.split()
 
                 out.write(inc(args[1]))
+            elif line.split()[0] == "dec":
+                args= line.split()
+
+                out.write(dec(args[1]))
             elif line.split()[0] == "add":
                 line = line.replace(",", " ")
                 args= line.split()
 
                 out.write(add(args[1], args[2]))
+            elif line.split()[0] == "sub":
+                line = line.replace(",", " ")
+                args= line.split()
+
+                out.write(sub(args[1], args[2]))
             elif line.split()[0] == "mul":
                 line = line.replace(",", " ")
                 args= line.split()

@@ -4,11 +4,11 @@ Instructions needed to movfuscate:
 
 - *mov  
 - add  DONE
-- sub  
+- sub  DONE
 - mul  DONE
 - div  
 - inc  DONE
-- dec  
+- dec  DONE
 - shl  DONE
 - shr  
 - or   DONE

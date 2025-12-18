@@ -27,6 +27,7 @@ for op1 in range(256):
         lookup_xor += str((op1 ^ op2) & 0xFF) + ", "
 lookup_xor = lookup_xor[0: -2]
 
+
 def save_registers():
     ret = ""
     ret += "movl %eax, tax\n"
@@ -406,6 +407,44 @@ def dec(op):
 
     return ret
 
+
+def divv(op1, op2): 
+    ret = ""
+    ret+=save_registers()
+    ret+="movl $branch, %edi\n"
+    ret+="movl $0, %eax\n"
+    ret+="movl $rez, %ebx\n"
+    ret+="movl %ebx, (%edi, %eax, 4)\n"
+    ret+="movl $1, %eax\n"
+    ret += 'movl $trash, %ebx\n'
+    ret += 'movl %ebx, (%edi, %eax, 4)\n'
+
+    ret+=f"movl {op2}, %edx\n"
+    ret+='movl $0, %eax\n'
+    ret+='movl %eax, rez\n'
+    ret+='movl %eax, progexec\n'
+
+
+    for i in range(256):
+        ret+=sub(op1, "%edx")
+        ret+=add("$1", "%rez")
+        ret+="movl rez, %eax\n"
+        ret+="movl %eax, next_val\n"
+        ret+=trlupdprogexec("%edx", "$0")
+
+
+
+        ret+= "movl progexec, %eax\n"
+        ret +="movl (%edi, %eax, 4), %esi\n"
+        ret +="movl next_val, %eax\n"
+        ret+= "movl %eax, (%esi)\n"
+
+    ret += restore_registers()
+    ret+="movl rez, %eax"
+
+    return ret
+
+
 out = open("out.s", "w")
 with open("in.s", "r") as assembly:
     for line in assembly.readlines():
@@ -433,6 +472,10 @@ with open("in.s", "r") as assembly:
             out.write("    top2: .space 4 \n") # temporary space for add func operand 2
             out.write("    topm1: .space 4 \n") # temporary space for mul func operand 1
             out.write("    topm2: .space 4 \n") # temporary space for mul func operand 2
+
+            out.write("    next_val: .space 4 \n") #next cat
+            out.write("    rez: .space 4\n") #div?
+            out.write("    trash: .space 4\n") #temporary space for trashing ;)
 
             out.write("    progexec: .space 4 \n") # dictates program flow
             out.write("    branch: .space 8 \n") # 4 bytes of memory at ($branch, $0, 4) and 4 at ($branch, $1, 4) [obv, arg1 and arg2 in registers]
@@ -484,6 +527,10 @@ with open("in.s", "r") as assembly:
                 args= line.split()
 
                 out.write(nott(args[1]))
+            elif line.split()[0] == "div":
+                line = line.replace(",", " ")
+                arcs = line.split()
+                out.write(divv(args[1], args[2]))
             elif line.split()[0] == "xor":
                 line = line.replace(",", " ")
                 args= line.split()

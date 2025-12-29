@@ -27,6 +27,12 @@ for op1 in range(256):
         lookup_xor += str((op1 ^ op2) & 0xFF) + ", "
 lookup_xor = lookup_xor[0: -2]
 
+lookup_div2 = ""
+for i in range(256):
+    lookup_div2 +=str(i // 2)+", "
+lookup_div2 = lookup_div2[0: -2]
+
+
 def save_registers():
     ret = ""
     ret += "movl %eax, tax\n"
@@ -175,6 +181,43 @@ def mul(op1, op2):
 
     return ret
 
+# TODO Check
+def divv(op1, op2): 
+    ret = ""
+    ret+=save_registers()
+    ret+="movl $branch, %edi\n"
+    ret+="movl $0, %eax\n"
+    ret+="movl $rez, %ebx\n"
+    ret+="movl %ebx, (%edi, %eax, 4)\n"
+    ret+="movl $1, %eax\n"
+    ret += 'movl $trash, %ebx\n'
+    ret += 'movl %ebx, (%edi, %eax, 4)\n'
+
+    ret+=f"movl {op2}, %edx\n"
+    ret+='movl $0, %eax\n'
+    ret+='movl %eax, rez\n'
+    ret+='movl %eax, progexec\n'
+
+
+    for i in range(256):
+        ret+=sub(op1, "%edx")
+        ret+=add("$1", "rez")
+        ret+="movl rez, %eax\n"
+        ret+="movl %eax, next_val\n"
+        ret+=trlupdprogexec("%edx", "$0")
+
+
+
+        ret+= "movl progexec, %eax\n"
+        ret +="movl (%edi, %eax, 4), %esi\n"
+        ret +="movl next_val, %eax\n"
+        ret+= "movl %eax, (%esi)\n"
+
+    ret += restore_registers()
+    ret+="movl rez, %eax\n"
+
+    return ret
+
 def shl(op1, op2):
     '''
     Shift left (AlSO SAVES IN EAX)
@@ -219,6 +262,54 @@ def shl(op1, op2):
 
         ret += "movl topm1, %edx\n" # This ensures edx is always updated with the necessary value after branching,
                                   # Even though it got corrupted during the add (writing to itself a value not needed to execute by progexec)
+    
+    ret += restore_registers()
+
+    # Final result will be in eax
+    ret += "movl topm1, %eax\n"
+
+    return ret
+
+# TODO Check
+def shr(op1, op2):
+    ret = ""
+
+    ret += save_registers()
+
+    # Initialize branch
+    ret += "movl $branch, %edi\n"
+
+    ret += "movl $0, %eax\n"
+    ret += "movl $topm1, %ebx\n" # we will save the real branch at the adress of topm1 (Be careful, progexec initially starts at 0 so we want that)
+    ret += "movl %ebx, (%edi, %eax, 4)\n"
+
+    ret += "movl $1, %eax\n"
+    ret += "movl $topm2, %ebx\n" # we will save the fake branch at the adress of topm2 (Be careful, progexec initially starts at 0 so we want that)
+    ret += "movl %ebx, (%edi, %eax, 4)\n"
+
+    # Initialize variables
+    ret += "movl $0, %ecx\n"
+    ret += f"movb {op1}, %cl\n"
+
+    ret += f"movl {op2}, %edx\n"
+    ret += "movl %edx, topm1\n"
+
+
+    for i in range(256):
+        # Multiply by 2, save in edx
+        ret += "movl $lookup_div2, %ebp\n"
+        for j in ["0", "1", "2", "3"]:
+            ret += "movl $0, %eax\n"
+            ret += f"movb {j}(%edx), %al\n"
+            ret += "movb (%ebp, %eax), %al\n"
+            ret += f"movb %al, {j}(%edx)\n"
+        ret += trlupdprogexec("%ecx", f"{i}")
+
+
+        ret +="movl progexec, %eax\n"
+        ret += "movl (%edi, %eax, 4), %esi\n"
+        ret += "movl %edx, (%esi)\n" 
+        ret+= "movl topm1, %edx\n"
     
     ret += restore_registers()
 
@@ -421,6 +512,7 @@ with open("in.s", "r") as assembly:
             out.write(f"    lookup_orr: .byte {lookup_orr} \n") # lookup table for or
             out.write(f"    lookup_nott: .byte {lookup_nott} \n") # lookup table for not
             out.write(f"    lookup_xor: .byte {lookup_xor} \n") # lookup table for xor
+            out.write(f"    lookup_div2: .byte {lookup_div2} \n")
 
             out.write("    tax: .space 4\n") # temporary space for register eax
             out.write("    tbx: .space 4\n") # temporary space for register ebx
@@ -433,6 +525,11 @@ with open("in.s", "r") as assembly:
             out.write("    top2: .space 4 \n") # temporary space for add func operand 2
             out.write("    topm1: .space 4 \n") # temporary space for mul func operand 1
             out.write("    topm2: .space 4 \n") # temporary space for mul func operand 2
+
+            out.write("    next_val: .space 4 \n") #next cat
+            out.write("    rez: .space 4\n") #div?
+            out.write("    trash: .space 4\n") #temporary space for trashing ;) # THERE ALREADY IS SPACE FOR TRASH TODO
+
 
             out.write("    progexec: .space 4 \n") # dictates program flow
             out.write("    branch: .space 8 \n") # 4 bytes of memory at ($branch, $0, 4) and 4 at ($branch, $1, 4) [obv, arg1 and arg2 in registers]
@@ -465,6 +562,14 @@ with open("in.s", "r") as assembly:
                 op1 = args[1]
                 op2 = args[2]
                 out.write(mul(args[1], args[2]))
+            elif line.split()[0] == "div":
+                line = line.replace(",", " ")
+                args = line.split()
+                out.write(divv(args[1], args[2]))
+            elif line.split()[0] == "shr":
+                line = line.replace(",", " ")
+                args = line.split()
+                out.write(shr(args[1], args[2]))
             elif line.split()[0] == "shl":
                 line = line.replace(",", " ")
                 args= line.split()
